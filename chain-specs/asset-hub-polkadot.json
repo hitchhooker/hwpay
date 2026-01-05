@@ -1,0 +1,24 @@
+{
+  "name": "Polkadot Asset Hub",
+  "id": "asset-hub-polkadot",
+  "chainType": "Live",
+  "bootNodes": [
+    "/dns/polkadot-asset-hub-connect-0.polkadot.io/tcp/30334/p2p/12D3KooWNiB27rpXX2NQES9pGPqbLvRBMn3m9BHXDfXFCwMgkYzn",
+    "/dns/polkadot-asset-hub-connect-1.polkadot.io/tcp/30334/p2p/12D3KooWFsXS9AfgQ3khKMTkMmDvU2oyF5UNTK4VYeoYEvBnb7wL"
+  ],
+  "telemetryEndpoints": null,
+  "protocolId": "statemint",
+  "properties": {
+    "tokenDecimals": 10,
+    "tokenSymbol": "DOT"
+  },
+  "relay_chain": "polkadot",
+  "para_id": 1000,
+  "codeSubstitutes": {},
+  "genesis": {
+    "raw": {
+      "top": {},
+      "childrenDefault": {}
+    }
+  }
+}
