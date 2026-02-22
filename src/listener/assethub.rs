@@ -37,6 +37,24 @@ impl std::fmt::Display for ListenerError {
 
 impl std::error::Error for ListenerError {}
 
+/// Parse byte tuple string format like ((14, 254, 36, ...)) to SS58 address
+fn parse_address_to_ss58(raw_str: &str) -> String {
+    let numbers: Vec<u8> = raw_str
+        .replace("(", "")
+        .replace(")", "")
+        .split(',')
+        .filter_map(|s| s.trim().parse::<u8>().ok())
+        .collect();
+
+    if numbers.len() == 32 {
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&numbers);
+        crate::wallet::polkadot::encode_ss58(&arr, 0)
+    } else {
+        raw_str.to_string()
+    }
+}
+
 /// Asset Hub deposit listener with dynamic event decoding
 pub struct AssetHubListener {
     /// Map of watched addresses to (user_id, derivation_index)
@@ -150,6 +168,18 @@ impl AssetHubListener {
                         tracing::warn!("failed to decode transfer event: {}", e);
                     }
                 }
+
+                // Also handle native token transfers (DOT/PAS)
+                if pallet == "Balances" && variant == "Transfer" {
+                    if let Err(e) = self.handle_native_transfer_dynamic(
+                        &event,
+                        block_number,
+                        &format!("{:?}", block_hash),
+                        &callback
+                    ).await {
+                        tracing::warn!("failed to decode native transfer event: {}", e);
+                    }
+                }
             }
         }
 
@@ -175,13 +205,13 @@ impl AssetHubListener {
             .map(|v| v as u32)
             .ok_or_else(|| ListenerError::Decode("missing asset_id".into()))?;
 
-        let from = field_values.at("from")
-            .map(|v| format!("{}", v))
+        let from_raw = field_values.at("from")
             .ok_or_else(|| ListenerError::Decode("missing from".into()))?;
+        let from = parse_address_to_ss58(&format!("{}", from_raw));
 
-        let to_address = field_values.at("to")
-            .map(|v| format!("{}", v))
+        let to_raw = field_values.at("to")
             .ok_or_else(|| ListenerError::Decode("missing to".into()))?;
+        let to_address = parse_address_to_ss58(&format!("{}", to_raw));
 
         let amount = field_values.at("amount")
             .and_then(|v| v.as_u128())
@@ -221,6 +251,72 @@ impl AssetHubListener {
             "deposit detected: {} {} from {} to {} (user: {}, index: {})",
             amount_decimal,
             asset,
+            deposit.from,
+            deposit.to,
+            user_id,
+            derivation_index
+        );
+
+        // Call the callback
+        if let Err(e) = callback.on_deposit(deposit).await {
+            tracing::error!("callback error: {:?}", e);
+        }
+
+        Ok(())
+    }
+
+    /// Handle a native token (DOT/PAS) transfer event
+    async fn handle_native_transfer_dynamic<C: DepositCallback>(
+        &self,
+        event: &subxt::events::EventDetails<PolkadotConfig>,
+        block_number: u64,
+        block_hash: &str,
+        callback: &C,
+    ) -> Result<(), ListenerError> {
+        // Decode event fields: Balances::Transfer has from, to, amount
+        let field_values = event.field_values()
+            .map_err(|e| ListenerError::Decode(format!("field values: {}", e)))?;
+
+        let from_raw = field_values.at("from")
+            .ok_or_else(|| ListenerError::Decode("missing from".into()))?;
+        let from = parse_address_to_ss58(&format!("{}", from_raw));
+
+        let to_raw = field_values.at("to")
+            .ok_or_else(|| ListenerError::Decode("missing to".into()))?;
+        let to_address = parse_address_to_ss58(&format!("{}", to_raw));
+
+        let amount = field_values.at("amount")
+            .and_then(|v| v.as_u128())
+            .ok_or_else(|| ListenerError::Decode("missing amount".into()))?;
+
+        tracing::debug!(
+            "native transfer event: from={} to={} amount={}",
+            from, to_address, amount
+        );
+
+        // Check if this is to one of our watched addresses
+        let watched = self.watched.read().await;
+        let Some((user_id, derivation_index)) = watched.get(&to_address) else {
+            return Ok(());
+        };
+
+        // Native DOT has 10 decimals
+        let amount_decimal = amount as f64 / 10f64.powi(10);
+
+        let deposit = Deposit {
+            tx_hash: block_hash.to_string(),
+            block_number,
+            from,
+            to: to_address.clone(),
+            amount: amount_decimal,
+            asset: Asset::Dot,
+            user_id: user_id.clone(),
+            derivation_index: *derivation_index,
+        };
+
+        tracing::info!(
+            "native deposit detected: {} DOT from {} to {} (user: {}, index: {})",
+            amount_decimal,
             deposit.from,
             deposit.to,
             user_id,

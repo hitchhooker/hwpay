@@ -23,7 +23,7 @@ impl PolkadotWallet {
     pub fn from_vault(vault: &mut Vault) -> Result<Self, VaultError> {
         let seed = vault.load(SecretId::WalletSeed)?;
         Self::from_seed(seed.expose_secret())
-            .map_err(|e| VaultError::InvalidSecret(e))
+            .map_err(VaultError::InvalidSecret)
     }
 
     /// Create from raw seed bytes
@@ -89,7 +89,7 @@ impl PolkadotWallet {
 }
 
 /// Encode public key as SS58 address
-fn encode_ss58(pubkey: &[u8; 32], prefix: u16) -> String {
+pub fn encode_ss58(pubkey: &[u8; 32], prefix: u16) -> String {
     let mut data = Vec::with_capacity(35);
 
     if prefix < 64 {
@@ -143,7 +143,7 @@ pub fn decode_ss58(address: &str) -> Result<[u8; 32], String> {
     hasher.update(&data[..prefix_len + 32]);
     let checksum = hasher.finalize();
 
-    if &checksum.as_bytes()[..2] != &data[prefix_len + 32..] {
+    if checksum.as_bytes()[..2] != data[prefix_len + 32..] {
         return Err("invalid checksum".into());
     }
 

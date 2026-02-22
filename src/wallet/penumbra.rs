@@ -4,6 +4,7 @@
 
 use penumbra_sdk_keys::keys::{AddressIndex, SpendKey, SpendKeyBytes, FullViewingKey};
 use sha2::{Sha256, Digest};
+use std::str::FromStr;
 
 /// Penumbra wallet for deriving shielded payment addresses
 pub struct PenumbraWallet {
@@ -22,6 +23,15 @@ impl PenumbraWallet {
         spend_key_bytes.copy_from_slice(&seed[..32]);
 
         let spend_key = SpendKey::from(SpendKeyBytes(spend_key_bytes));
+        let fvk = spend_key.full_viewing_key().clone();
+
+        Ok(Self { spend_key, fvk })
+    }
+
+    /// Create from bech32-encoded spend key (penumbraspendkey1...)
+    pub fn from_spend_key_bech32(spend_key_str: &str) -> Result<Self, String> {
+        let spend_key = SpendKey::from_str(spend_key_str)
+            .map_err(|e| format!("invalid spend key: {}", e))?;
         let fvk = spend_key.full_viewing_key().clone();
 
         Ok(Self { spend_key, fvk })

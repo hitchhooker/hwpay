@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Hardware-secured payment processor with TPM support for Polkadot, Penumbra, and Stripe"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/parity/hwpay"
+repository = "https://github.com/hitchhooker/hwpay"
 keywords = ["payments", "tpm", "polkadot", "penumbra", "stripe"]
 categories = ["cryptography", "web-programming"]
 
@@ -81,3 +81,7 @@ penumbra = [
     "penumbra-sdk-asset",
     "tonic",
 ]
+
+[[example]]
+name = "penumbra_test"
+required-features = ["penumbra"]

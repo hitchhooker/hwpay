@@ -1,3 +1,5 @@
 /target
 .env
 *.sealed
+js/node_modules/
+js/dist/

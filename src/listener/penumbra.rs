@@ -14,8 +14,14 @@ use tonic::transport::Channel;
 
 use super::{Asset, Deposit, DepositCallback};
 
-/// USDC asset ID on penumbra (IBC transferred from noble)
-pub const USDC_ASSET_ID: &str = "transfer/channel-0/uusdc";
+/// IBC USDC asset_id on penumbra (Osmosis USDC via channel-2)
+/// Verified from pclientd for denom "transfer/channel-2/uusdc"
+pub const USDC_ASSET_ID_OSMOSIS: &str = "76b3e4b10681358c123b381f90638476b7789040e47802de879f0fb3eedc8d0b";
+
+/// Check if an asset_id hex string matches known USDC
+pub fn is_usdc_asset(asset_id_hex: &str) -> bool {
+    asset_id_hex == USDC_ASSET_ID_OSMOSIS
+}
 
 /// Penumbra listener configuration
 pub struct PenumbraListenerConfig {
@@ -189,27 +195,40 @@ impl PenumbraListener {
                     .map(|a| hex::encode(&a.inner))
                     .unwrap_or_default();
 
-                // convert amount to f64 (penumbra usdc has 6 decimals)
-                let amount_decimal = amount as f64 / 1_000_000.0;
+                // determine asset type from asset_id
+                let (asset, decimals) = if is_usdc_asset(&asset_id) {
+                    (Asset::Usdc, 6)
+                } else {
+                    // skip non-USDC assets for now
+                    tracing::debug!(
+                        "skipping non-USDC penumbra deposit: asset_id={}",
+                        asset_id
+                    );
+                    continue;
+                };
+
+                // convert amount to f64
+                let amount_decimal = amount as f64 / 10f64.powi(decimals);
 
                 // create deposit record
+                // use address_index as derivation_index since that's what we need to look up the account
                 let deposit = Deposit {
                     tx_hash: commitment.clone(),
                     from: String::new(), // penumbra notes don't reveal sender
                     to: format!("penumbra_index:{}", address_index),
                     amount: amount_decimal,
-                    asset: Asset::Usdc, // TODO: check actual asset from asset_id
+                    asset,
                     block_number: note_record.height_created,
                     user_id: user_id.clone(),
-                    derivation_index: *derivation_index,
+                    derivation_index: address_index,
                 };
 
                 tracing::info!(
-                    "detected penumbra deposit: {} units of {} for user {} (index {})",
+                    "detected penumbra deposit: {} units of {} for user {} (penumbra_index {})",
                     amount,
                     asset_id,
                     user_id,
-                    derivation_index
+                    address_index
                 );
 
                 // mark as processed

@@ -13,26 +13,22 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use hwpay::{Vault, PaymentProcessor, PolkadotListener};
+//! use hwpay::{Vault, PaymentProcessor};
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Initialize vault (tries TPM, falls back to encrypted file)
 //!     let vault = Vault::open(None)?;
 //!
 //!     // Create payment processor
-//!     let processor = PaymentProcessor::new(vault)?;
+//!     let mut processor = PaymentProcessor::new(vault);
+//!
+//!     // Initialize polkadot wallet from sealed seed
+//!     processor.init_polkadot()?;
 //!
 //!     // Get deposit address for a user
-//!     let address = processor.polkadot_address("user@example.com", 0)?;
-//!     println!("Send USDC to: {}", address);
-//!
-//!     // Start listening for deposits (light client)
-//!     let listener = PolkadotListener::new(&processor).await?;
-//!     listener.run(|deposit| async {
-//!         println!("Received {} USDC from {}", deposit.amount, deposit.from);
-//!         Ok(())
-//!     }).await?;
+//!     if let Some(address) = processor.polkadot_address("user@example.com", 0) {
+//!         println!("Send USDC to: {}", address);
+//!     }
 //!
 //!     Ok(())
 //! }
@@ -44,6 +40,8 @@ pub mod vault;
 pub mod wallet;
 pub mod listener;
 pub mod stripe;
+pub mod proxy;
+pub mod sweep;
 
 // Re-exports
 pub use vault::{Vault, VaultError, SecretKey, SecretId, StorageMethod};
@@ -52,6 +50,8 @@ pub use listener::polkadot::PolkadotListener;
 pub use listener::assethub::AssetHubListener;
 pub use listener::{Deposit, DepositCallback, Asset};
 pub use stripe::{StripeProcessor, StripeError, PaymentIntent, CheckoutSession, WebhookEvent};
+pub use proxy::{ProxyManager, ProxyConfig, ProxyType, TierConfig, PureProxyResult, ProxyError};
+pub use sweep::{Sweeper, SweepConfig, SweepResult};
 
 use secrecy::SecretBox;
 

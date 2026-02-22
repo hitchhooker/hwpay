@@ -151,7 +151,7 @@ impl StripeProcessor {
         let secret = String::from_utf8_lossy(self.secret_key.expose_secret());
 
         let resp = client
-            .get(&format!("https://api.stripe.com/v1/payment_intents/{}", id))
+            .get(format!("https://api.stripe.com/v1/payment_intents/{}", id))
             .basic_auth(secret.as_ref(), None::<&str>)
             .send()
             .await
@@ -262,8 +262,6 @@ pub struct WebhookEventData {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn signature_parsing() {
         // this would need a real signature to test properly
