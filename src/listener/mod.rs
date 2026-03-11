@@ -6,6 +6,9 @@ pub mod assethub;
 #[cfg(feature = "penumbra")]
 pub mod penumbra;
 
+#[cfg(feature = "zcash")]
+pub mod zcash;
+
 use serde::{Deserialize, Serialize};
 
 /// Detected deposit
@@ -38,6 +41,8 @@ pub enum Asset {
     Usdt,
     /// Native DOT
     Dot,
+    /// Zcash (ZEC)
+    Zec,
 }
 
 impl Asset {
@@ -46,6 +51,7 @@ impl Asset {
         match self {
             Self::Usdc | Self::Usdt => 6,
             Self::Dot => 10,
+            Self::Zec => 8,
         }
     }
 }
@@ -56,6 +62,7 @@ impl std::fmt::Display for Asset {
             Self::Usdc => write!(f, "USDC"),
             Self::Usdt => write!(f, "USDT"),
             Self::Dot => write!(f, "DOT"),
+            Self::Zec => write!(f, "ZEC"),
         }
     }
 }

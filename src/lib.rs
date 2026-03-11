@@ -53,6 +53,11 @@ pub use stripe::{StripeProcessor, StripeError, PaymentIntent, CheckoutSession, W
 pub use proxy::{ProxyManager, ProxyConfig, ProxyType, TierConfig, PureProxyResult, ProxyError};
 pub use sweep::{Sweeper, SweepConfig, SweepResult};
 
+#[cfg(feature = "zcash")]
+pub use wallet::zcash::ZcashWallet;
+#[cfg(feature = "zcash")]
+pub use listener::zcash::{ZcashListener, ZcashListenerConfig};
+
 use secrecy::SecretBox;
 
 /// Type alias for secret bytes with auto-zeroization

@@ -81,6 +81,8 @@ penumbra = [
     "penumbra-sdk-asset",
     "tonic",
 ]
+# enable zcash support (transparent addresses, JSON-RPC listener)
+zcash = []
 
 [[example]]
 name = "penumbra_test"
